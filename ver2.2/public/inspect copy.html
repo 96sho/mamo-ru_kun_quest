@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>ハザードマップ</title>
+        <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+        <script>eruda.init();</script>
+        <script src='https://www.bing.com/api/maps/mapcontrol?callback=GetMap&key=AqiINfRTWexry8c2zYl5uBDVzCxh6dQ46Du_ageeJbfSLdLjA1vzR96jXzC6Boif' async defer></script>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+    </head>
+    <body onload="getMap();">
+        <input type="text" id="dangerLocations" style="position: absolute; top: 10px; left: 10px;"/>
+        <button style="margin: 5px; border: none; background-color: white;" onclick="window.location.href = `/menu?token=${window.sessionStorage.token}&lang=${window.sessionStorage.language}`;"><span class="material-symbols-outlined" style="font-size: 1.2rem;">arrow_back</span></button>
+        <div id="myMap" style="width: 100vw; height: 100vh; text-align: center; color: black;"></div>
+        <script>
+
+            const conversionTable = {
+                "brake": "急ブレーキ",
+                "rear impact": "追突事故"
+            }
+
+            document.querySelector("#myMap").innerHTML = "<br><br><br><br><h2>危険箇所を読み込んでいます...</h2>";
+            var map, infobox;
+            async function getMap(){
+                const coords = {coords: {latitude: 36.37468306977038, longitude: 139.05183232195415}}
+                map = new Microsoft.Maps.Map("#myMap",{
+                    center: new Microsoft.Maps.Location(coords.coords.latitude, coords.coords.longitude),
+                    zoom: 15,
+                });
+                
+                var center = map.getCenter();
+
+                infobox = new Microsoft.Maps.Infobox(center,{visible: false});
+
+                infobox.setMap(map);
+
+                var randomLocations = []
+                fetch("https://raw.githubusercontent.com/sho96/mamo-ru_kun/refs/heads/main/roadNotFoundPoints/1%2C728%2C946%2C454%2C011.json?token=GHSAT0AAAAAACY63JO6XQFJRGAVOBPVTYCOZYODLDQ")
+                .then(res => res.json()).then(dangerLocationDatas => {
+                    for (const element of dangerLocationDatas){
+                        console.log(element);
+                        randomLocations[randomLocations.length] = {location: new Microsoft.Maps.Location(element.lat, element.lon), time: element.time, accuracy: element.accuracy, speed: element.speed, heading: element.heading, img: element.img, lat: element.lat, lon: element.lon, type: element.type};
+                    }
+    
+                    for (const element of randomLocations) {
+
+                        var pin = new Microsoft.Maps.Pushpin(element.location, {});
+    
+                        const timestamp = new Date(element.time);
+                        const consttimeString = `${timestamp.getHours()}:${("0" + timestamp.getMinutes()).slice(-2)}`;
+    
+                        let description = "";
+                        if(!element.heading){
+                            description = `${consttimeString}`;
+                        }else{
+                            description = `${consttimeString} <br> latlon: ${element.lat}, ${element.lon} <br> heading:${element.heading} <br> speed:${element.speed} m/s <br> accuracy:${element.accuracy} m`;
+                        }
+    
+                        //Store some metadata with the pushpin.
+                        pin.metadata = {
+                            title: conversionTable[element.type],
+                            description: description,
+                        };
+    
+                        //Add a click event handler to the pushpin.
+                        Microsoft.Maps.Events.addHandler(pin, 'click', pushpinClicked);
+    
+                        //Add pushpin to the map.
+                        map.entities.push(pin);
+                    }
+                })
+            }
+            
+            function pushpinClicked(e) {
+                //Make sure the infobox has metadata to display.
+                if (e.target.metadata) {
+                    //Set the infobox options with the metadata of the pushpin.
+                    infobox.setOptions({
+                        location: e.target.getLocation(),
+                        title: e.target.metadata.title,
+                        description: e.target.metadata.description,
+                        visible: true,
+                        maxWidth: 300,
+                    });
+                }
+            }
+
+            function getPos(){
+                return new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, {enableHighAccuracy:true}))
+            }
+
+            async function getJson(){
+                const params = new URLSearchParams(window.location.search);
+                const filename = params.get("filename");
+                if(!filename){
+                    alert("no filename");
+                    return[];
+                }
+                return await (await fetch(`http://localhost:3000/${filename}.json`)).json();
+            }
+        </script>
+        <style>
+            body{
+                margin: 0;
+                font-family: Arial;
+                background-color: white;
+            }
+        </style>
+    </body>
+</html>
