@@ -70,7 +70,7 @@ const App = ({
     const [showDebug, setShowDebug] = useState(false);
     const [debugMode, setDebugMode] = useState(true);
 
-    const [preventDataUpdate, setPreventDataUpdate] = useState(false);
+    const [preventDataUpdate, setPreventDataUpdate] = useState(true);
 
     const roadNotFoundPoints = useRef([]);
 
